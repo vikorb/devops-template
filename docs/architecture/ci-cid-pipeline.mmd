@@ -1,0 +1,94 @@
+flowchart LR
+    subgraph Developer
+        Code["Code Source"]
+    end
+    
+    subgraph GitHubFlow["GitHub Repository"]
+        Push["Git Push"]
+        PR["Pull Request"]
+        MergeMain["Merge to Main"]
+    end
+    
+    subgraph CIPipeline["CI Pipeline (GitHub Actions)"]
+        Checkout["Checkout Code"]
+        Install["Install Dependencies"]
+        Lint["Lint Code"]
+        Test["Run Tests"]
+        SecurityScan["Security Scan"]
+        Build["Build & Package"]
+        DockerBuild["Build Docker Image"]
+        DockerPush["Push to Registry"]
+    end
+    
+    subgraph CDPipeline["CD Pipeline (GitHub Actions)"]
+        Deploy["Deploy"]
+        subgraph Environments
+            DevDeploy["Development"]
+            StagingDeploy["Staging"]
+            ProdApproval["Production Approval"]
+            ProdDeploy["Production"]
+        end
+        Verify["Verify Deployment"]
+        Rollback["Rollback (if needed)"]
+    end
+    
+    subgraph Infrastructure["Infrastructure Management"]
+        TerraformPlan["Terraform Plan"]
+        TerraformApply["Terraform Apply"]
+        ConfigManagement["Config Management"]
+    end
+    
+    subgraph MonitoringFlow["Monitoring & Feedback"]
+        Prometheus["Prometheus"]
+        Grafana["Grafana Dashboards"]
+        Alerts["Alerting"]
+        Logs["Log Aggregation"]
+    end
+    
+    Code --> Push
+    Push --> PR
+    PR --> Checkout
+    
+    Checkout --> Install
+    Install --> Lint
+    Lint --> Test
+    Test --> SecurityScan
+    SecurityScan --> Build
+    Build --> DockerBuild
+    DockerBuild --> DockerPush
+    
+    PR -- "Approved" --> MergeMain
+    MergeMain --> Deploy
+    
+    Deploy --> DevDeploy
+    DevDeploy -- "Tests Pass" --> StagingDeploy
+    StagingDeploy -- "Tests Pass" --> ProdApproval
+    ProdApproval -- "Approved" --> ProdDeploy
+    
+    Deploy -- "Update Infrastructure" --> TerraformPlan
+    TerraformPlan --> TerraformApply
+    TerraformApply --> ConfigManagement
+    
+    DevDeploy --> Verify
+    StagingDeploy --> Verify
+    ProdDeploy --> Verify
+    
+    Verify -- "Failed" --> Rollback
+    
+    DevDeploy --> Prometheus
+    StagingDeploy --> Prometheus
+    ProdDeploy --> Prometheus
+    Prometheus --> Grafana
+    Grafana --> Alerts
+    
+    DevDeploy --> Logs
+    StagingDeploy --> Logs
+    ProdDeploy --> Logs
+    
+    classDef pipelineSteps fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef environments fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef monitoring fill:#bfb,stroke:#333,stroke-width:2px;
+    
+    class Checkout,Install,Lint,Test,SecurityScan,Build,DockerBuild,DockerPush pipelineSteps;
+    class DevDeploy,StagingDeploy,ProdApproval,ProdDeploy environments;
+    class Prometheus,Grafana,Alerts,Logs monitoring;

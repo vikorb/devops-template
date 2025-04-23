@@ -1,0 +1,79 @@
+flowchart TD
+    subgraph Client
+        Browser["Navigateur Web"]
+    end
+
+    subgraph AWS["AWS Cloud"]
+        subgraph Route53["Route 53"]
+            DNS["DNS Management"]
+        end
+
+        subgraph CloudFront["CloudFront"]
+            CDN["CDN Distribution"]
+            WAF["AWS WAF"]
+        end
+        
+        subgraph VPC["VPC"]
+            subgraph PublicSubnets["Public Subnets"]
+                ALB["Application Load Balancer"]
+                Bastion["Bastion Host"]
+            end
+            
+            subgraph PrivateSubnets["Private Subnets"]
+                subgraph ECS["ECS Cluster"]
+                    Service["ECS Service"]
+                    subgraph Tasks["ECS Tasks"]
+                        App1["App Container"]
+                        App2["App Container"]
+                        App3["App Container"]
+                    end
+                end
+            end
+            
+            subgraph DataSubnets["Data Subnets"]
+                RDS["RDS Database"]
+                ElastiCache["ElastiCache Redis"]
+            end
+        end
+        
+        subgraph MonitoringServices["Monitoring & Logging"]
+            CloudWatch["CloudWatch"]
+            XRay["X-Ray"]
+            CloudTrail["CloudTrail"]
+        end
+        
+        subgraph AuxiliaryServices["Auxiliary Services"]
+            S3["S3 Buckets"]
+            ECR["ECR Repository"]
+            SecretsManager["Secrets Manager"]
+            ParameterStore["Parameter Store"]
+        end
+        
+        subgraph CICD["CI/CD Pipeline"]
+            CodeBuild["CodeBuild"]
+            CodePipeline["CodePipeline"]
+            CodeDeploy["CodeDeploy"]
+        end
+    end
+    
+    Browser --> DNS
+    DNS --> CDN
+    CDN --> WAF
+    WAF --> ALB
+    ALB --> Service
+    Service --> Tasks
+    Tasks --> RDS
+    Tasks --> ElastiCache
+    Tasks --> S3
+    Tasks --> SecretsManager
+    Tasks --> ParameterStore
+    
+    Tasks --> CloudWatch
+    Tasks --> XRay
+    
+    CICD --> ECR
+    CICD --> S3
+    CICD --> Service
+    
+    Bastion --> PrivateSubnets
+    Bastion --> DataSubnets

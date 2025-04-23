@@ -1,0 +1,107 @@
+version: '3.8'
+
+# Définition des services nécessaires pour le développement local
+services:
+  # Service principal de l'application
+  app:
+    build:
+      context: ..
+      dockerfile: ./docker/node/Dockerfile
+      target: build  # Utiliser seulement l'étape de build pour le développement
+    volumes:
+      - ../:/app:delegated  # Monter le code source pour le hot-reloading
+      - node_modules:/app/node_modules  # Volume pour les node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/devapp
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "3000:3000"  # Port de l'application
+      - "9229:9229"  # Port pour le débogueur Node.js
+    command: npm run dev
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  # Base de données PostgreSQL
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=devapp
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Service Redis pour le cache et les files d'attente
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Service de monitoring local
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  # Service de visualisation pour le monitoring
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+# Définition des volumes pour persister les données
+volumes:
+  postgres_data:
+  redis_data:
+  node_modules:
+  prometheus_data:
+  grafana_data:
+
+# Définition du réseau partagé par tous les services
+networks:
+  app-network:
+    driver: bridge
